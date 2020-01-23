@@ -10,13 +10,10 @@ from decimal import Decimal
 #
 
 class FiducialtoModelDistance(ScriptedLoadableModule):
-  """Uses ScriptedLoadableModule base class, available at:
-  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-  """
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "Fiducial to Model Distance" # TODO make this more human readable by adding spaces
+    self.parent.title = "Fiducial to Model Distance"
     self.parent.categories = ["Quantification"]
     self.parent.dependencies = []
     self.parent.contributors = ["Andras Lasso (Queen's University), Jesse Reynolds (Canterbury District Health Board)"] # replace with "Firstname Lastname (Organization)"
@@ -25,17 +22,13 @@ This module computes the distances between a set of fiducial points and a surfac
 """
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
     self.parent.acknowledgementText = """
-This file was originally developed by Andras Lasso (Queen's University) and Jesse Reynolds (Canterbury District Health Board).
-""" # replace with organization, grant and thanks.
+This file was originally developed by Andras Lasso (Queen's University) and Jesse Reynolds (Canterbury District Health Board)."""
 
 #
 # FiducialtoModelDistanceWidget
 #
 
 class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
-  """Uses ScriptedLoadableModuleWidget base class, available at:
-  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-  """
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
@@ -80,20 +73,9 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
 #
 
 class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
-  """This class should implement all the actual
-  computation done by your module.  The interface
-  should be such that other python code can import
-  this class and make use of the functionality without
-  requiring an instance of the Widget.
-  Uses ScriptedLoadableModuleLogic base class, available at:
-  https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
-  """
 
   def hasModelData(self,inputModel):
-    """This is an example logic method that
-    returns true if the passed in volume
-    node has valid image data
-    """
+    
     if not inputModel:
       logging.debug('hasModelData failed: no model node')
       return False
@@ -103,10 +85,8 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     return True
     
   def hasFiducialData(self,inputFiducials):
-    """This is an example logic method that
-    returns true if the passed in volume
-    node has valid image data
-    """
+    
+    # Checks if input fiducial data is valid
     if not inputFiducials:
       logging.debug('hasFiducialData failed: no fiducial node')
       return False
@@ -116,8 +96,8 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     return True
 
   def isValidInputData(self, inputModel, inputFiducials):
-    """Validates if the output is not the same as input
-    """
+   
+    # Validates if the output is not the same as input
     if not inputModel:
       logging.debug('isValidInputData failed: no input model node defined')
       return False
@@ -192,7 +172,7 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     absMean = totalabsDistance / nOfFiduciallPoints # calculate absolute mean
     rms = (totalsquareDistance / nOfFiduciallPoints) ** 0.5 # calculate root mean square
     
-    # set format in the output text boxes. Display values to 2 d.p. and if values are less than 0.001 display as in scientific notation
+    # set format in the output text boxes. Display values to 3 d.p. and if values are less than 0.001 display as scientific notation
     if absMean < 0.001:
       absMean = '%.3E' % Decimal(absMean)
     else:
@@ -209,7 +189,6 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       maxVal = '%.3E' % Decimal(maxVal)
     else:
       maxVal = '%.3f' % maxVal
-    
 
     # Create a table from result arrays
     resultTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Points from surface distance")
@@ -246,16 +225,6 @@ class FiducialtoModelDistanceTest(ScriptedLoadableModuleTest):
     self.test_FiducialtoModelDistance1()
 
   def test_FiducialtoModelDistance1(self):
-    """ Ideally you should have several levels of tests.  At the lowest level
-    tests should exercise the functionality of the logic with different inputs
-    (both valid and invalid).  At higher levels your tests should emulate the
-    way the user would interact with your code and confirm that it still works
-    the way you intended.
-    One of the most important features of the tests is that it should alert other
-    developers when their changes will have an impact on the behavior of your
-    module.  For example, if a developer removes a feature that you depend on,
-    your test should break so they know that the feature is needed.
-    """
 
     self.delayDisplay("Starting the test")
     #
