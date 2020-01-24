@@ -172,23 +172,18 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     absMean = totalabsDistance / nOfFiduciallPoints # calculate absolute mean
     rms = (totalsquareDistance / nOfFiduciallPoints) ** 0.5 # calculate root mean square
     
-    # set format in the output text boxes. Display values to 3 d.p. and if values are less than 0.001 display as scientific notation
-    if absMean < 0.001:
-      absMean = '%.3E' % Decimal(absMean)
-    else:
-      absMean = '%.3f' % absMean
-    if rms < 0.001:
-      rms = '%.3E' % Decimal(rms)
-    else:
-      rms = '%.3f' % rms
-    if minVal < 0.001:
-      minVal = '%.3E' % Decimal(minVal)
-    else:
-      minVal = '%.3f' % minVal
-    if maxVal < 0.001:
-      maxVal = '%.3E' % Decimal(maxVal)
-    else:
-      maxVal = '%.3f' % maxVal
+    # set format in the output text boxes. Display values to 4 d.p. and if values are less than 0.0001 display as scientific notation
+    def formatOutputs(inputNo):
+      if inputNo < 0.0001:
+        outputNo = '%.4E' % Decimal(inputNo)
+      else:
+        outputNo = '%.4f' % inputNo
+      return outputNo
+        
+    absMean = formatOutputs(absMean)
+    rms = formatOutputs(rms)
+    minVal = formatOutputs(minVal)
+    maxVal = formatOutputs(maxVal)
 
     # Create a table from result arrays
     resultTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Points from surface distance")
