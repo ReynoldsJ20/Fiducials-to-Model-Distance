@@ -43,6 +43,8 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
 
     # connections
     self.ui.applyButton.connect('clicked(bool)', self.onApplyButton)
+    self.ui.showPointsTableButton.connect('clicked(bool)', self.onPointsButton)
+    self.ui.showErrorMetricTableButton.connect('clicked(bool)', self.onErrorButton)
     self.ui.inputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.ui.inputFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
 
@@ -60,13 +62,19 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
 
   def onApplyButton(self):
     logic = FiducialtoModelDistanceLogic()
-    runOutput = logic.run(self.ui.inputModelSelector.currentNode(), self.ui.inputFiducialSelector.currentNode())
+    logic.run(self.ui.inputModelSelector.currentNode(), self.ui.inputFiducialSelector.currentNode())
     
-    # set text in output boxes using various outputs of the run method
-    self.ui.absMeanBox.setText(runOutput[1])
-    self.ui.rmsBox.setText(runOutput[2])
-    self.ui.absMax.setText(runOutput[3])
-    self.ui.absMin.setText(runOutput[4])
+    self.ui.showPointsTableButton.enabled = True
+    self.ui.showErrorMetricTableButton.enabled = True
+    
+  def onPointsButton(self):
+    logic = FiducialtoModelDistanceLogic()
+    logic.pointsTableButton()
+    
+  def onErrorButton(self):
+    logic = FiducialtoModelDistanceLogic()
+    logic.errorTableButton()
+  
 
 #
 # FiducialtoModelDistanceLogic
@@ -144,6 +152,14 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     labelCol.SetName("Name")
     distanceCol = vtk.vtkDoubleArray()
     distanceCol.SetName("Distance")
+    meanOfAbsCol = vtk.vtkDoubleArray()
+    meanOfAbsCol.SetName("Mean of Absolute Values")
+    rmsCol = vtk.vtkDoubleArray()
+    rmsCol.SetName("Root Mean Square")
+    maxCol = vtk.vtkDoubleArray()
+    maxCol.SetName("Maximum Absolute Distance")
+    minCol = vtk.vtkDoubleArray()
+    minCol.SetName("Minimum Absolute Distance")
 
     distanceFilter = vtk.vtkImplicitPolyDataDistance()
     distanceFilter.SetInput(surface_World);
@@ -169,36 +185,69 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       elif abs(closestPointDistance) < minVal:
         minVal = abs(closestPointDistance)
       
-    absMean = totalabsDistance / nOfFiduciallPoints # calculate absolute mean
-    rms = (totalsquareDistance / nOfFiduciallPoints) ** 0.5 # calculate root mean square
+    # Store minimum and maximum absolute values
+    maxCol.InsertNextValue(maxVal)
+    minCol.InsertNextValue(minVal)
     
-    # set format in the output text boxes. Display values to 4 d.p. and if values are less than 0.0001 display as scientific notation
-    def formatOutputs(inputNo):
-      if inputNo < 0.0001:
-        outputNo = '%.4E' % Decimal(inputNo)
-      else:
-        outputNo = '%.4f' % inputNo
-      return outputNo
-        
-    absMean = formatOutputs(absMean)
-    rms = formatOutputs(rms)
-    minVal = formatOutputs(minVal)
-    maxVal = formatOutputs(maxVal)
+    # Calculate and store Mean of Absolute Values
+    meanOfAbs = totalabsDistance / nOfFiduciallPoints
+    meanOfAbsCol.InsertNextValue(meanOfAbs)
+    
+    # Calculate and store RMS
+    rms = (totalsquareDistance / nOfFiduciallPoints) ** 0.5
+    rmsCol.InsertNextValue(rms)
 
     # Create a table from result arrays
     resultTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Points from surface distance")
     resultTableNode.AddColumn(indexCol)
     resultTableNode.AddColumn(labelCol)
     resultTableNode.AddColumn(distanceCol)
+    
+    # Create a table for Error Metrics
+    errorMetricTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Error Metrics Table")
+    errorMetricTableNode.AddColumn(meanOfAbsCol)
+    errorMetricTableNode.AddColumn(rmsCol)
+    errorMetricTableNode.AddColumn(maxCol)
+    errorMetricTableNode.AddColumn(minCol)
 
     # Show table in view layout
     slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
-    slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(resultTableNode.GetID())
+    slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(errorMetricTableNode.GetID())
     slicer.app.applicationLogic().PropagateTableSelection()
 
     logging.info('Processing completed')
 
-    return True, absMean, rms, maxVal, minVal # output values to put into the text boxes
+    return True
+  
+  def pointsTableButton(self):
+  
+    try:
+      resultTableNode = slicer.util.getNode('Points from surface distance')
+    except:
+      slicer.util.errorDisplay('There is no table named "Points from Surface Distance Table"')
+      return False
+  
+    # Show table in view layout
+    slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
+    slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(resultTableNode.GetID())
+    slicer.app.applicationLogic().PropagateTableSelection()
+    
+    return True
+    
+  def errorTableButton(self):
+  
+    try:
+      errorMetricTableNode = slicer.util.getNode('Error Metrics Table')
+    except:
+      slicer.util.errorDisplay('There is no table named "Error Metrics Table"')
+      return False
+  
+    # Show table in view layout
+    slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
+    slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(errorMetricTableNode.GetID())
+    slicer.app.applicationLogic().PropagateTableSelection()
+    
+    return True
 
 
 class FiducialtoModelDistanceTest(ScriptedLoadableModuleTest):
