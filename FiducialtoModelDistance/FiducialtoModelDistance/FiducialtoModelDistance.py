@@ -40,13 +40,18 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
 
     self.ui.inputModelSelector.setMRMLScene(slicer.mrmlScene)
     self.ui.inputFiducialSelector.setMRMLScene(slicer.mrmlScene)
+    self.ui.movingFiducialSelector.setMRMLScene(slicer.mrmlScene)
+    self.ui.fixedFiducialSelector.setMRMLScene(slicer.mrmlScene)
 
     # connections
-    self.ui.applyButton.connect('clicked(bool)', self.onApplyButton)
+    self.ui.applyButton.connect('clicked(bool)', self.onModelToFiducialApplyButton)
     self.ui.showPointsTableButton.connect('clicked(bool)', self.onPointsButton)
     self.ui.showErrorMetricTableButton.connect('clicked(bool)', self.onErrorButton)
     self.ui.inputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.ui.inputFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.ui.movingFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectFiducialtoFiducial)
+    self.ui.fixedFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectFiducialtoFiducial)
+    self.ui.fiducialToFiducialApplyButton.connect('clicked(bool)', self.onFiducialToFiducialApplyButton)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -59,10 +64,13 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
 
   def onSelect(self):
     self.ui.applyButton.enabled = self.ui.inputModelSelector.currentNode() and self.ui.inputFiducialSelector.currentNode()
+    
+  def onSelectFiducialtoFiducial(self):
+    self.ui.fiducialToFiducialApplyButton.enabled = self.ui.movingFiducialSelector.currentNode() and self.ui.fixedFiducialSelector.currentNode()
 
-  def onApplyButton(self):
+  def onModelToFiducialApplyButton(self):
     logic = FiducialtoModelDistanceLogic()
-    logic.run(self.ui.inputModelSelector.currentNode(), self.ui.inputFiducialSelector.currentNode())
+    logic.runFiducialToModel(self.ui.inputModelSelector.currentNode(), self.ui.inputFiducialSelector.currentNode())
     
     self.ui.showPointsTableButton.enabled = True
     self.ui.showErrorMetricTableButton.enabled = True
@@ -74,6 +82,13 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
   def onErrorButton(self):
     logic = FiducialtoModelDistanceLogic()
     logic.errorTableButton()
+    
+  def onFiducialToFiducialApplyButton(self):
+    logic = FiducialtoModelDistanceLogic()
+    logic.runFiducialToFiducial(self.ui.fixedFiducialSelector.currentNode(), self.ui.movingFiducialSelector.currentNode())
+    
+    self.ui.fiducialToFiducialShowPointsButton.enabled = True
+    self.ui.fiducialToFiducialShowErrorMetricTableButton.enabled = True
   
 
 #
@@ -114,10 +129,7 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       return False
     return True
 
-  def run(self, inputModel, inputFiducials):
-    """
-    Run the actual algorithm
-    """
+  def runFiducialToModel(self, inputModel, inputFiducials):
     
     if not self.hasFiducialData(inputFiducials):
       slicer.util.errorDisplay('Invalid Input Fiducials - Check Error Log For Details')
@@ -163,10 +175,10 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
 
     distanceFilter = vtk.vtkImplicitPolyDataDistance()
     distanceFilter.SetInput(surface_World);
-    nOfFiduciallPoints = inputFiducials.GetNumberOfFiducials()
+    nOfFiducialPoints = inputFiducials.GetNumberOfFiducials()
     totalabsDistance = 0
     totalsquareDistance = 0
-    for i in range(0, nOfFiduciallPoints):
+    for i in range(0, nOfFiducialPoints):
       point_World = [0,0,0]
       inputFiducials.GetNthControlPointPositionWorld(i, point_World)
       closestPointOnSurface_World = [0,0,0]
@@ -190,11 +202,11 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     minCol.InsertNextValue(minVal)
     
     # Calculate and store Mean of Absolute Values
-    meanOfAbs = totalabsDistance / nOfFiduciallPoints
+    meanOfAbs = totalabsDistance / nOfFiducialPoints
     meanOfAbsCol.InsertNextValue(meanOfAbs)
     
     # Calculate and store RMS
-    rms = (totalsquareDistance / nOfFiduciallPoints) ** 0.5
+    rms = (totalsquareDistance / nOfFiducialPoints) ** 0.5
     rmsCol.InsertNextValue(rms)
 
     # Create a table from result arrays
@@ -248,6 +260,88 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     slicer.app.applicationLogic().PropagateTableSelection()
     
     return True
+    
+  def runFiducialToFiducial(self, inputFixedFiducials, inputMovingFiducials):
+    
+    # Create arrays to store data
+    indexCol = vtk.vtkIntArray()
+    indexCol.SetName("Index")
+    labelCol = vtk.vtkStringArray()
+    labelCol.SetName("Name")
+    distanceCol = vtk.vtkDoubleArray()
+    distanceCol.SetName("Distance")
+    meanCol = vtk.vtkDoubleArray()
+    meanCol.SetName("Mean Distance")
+    rmsCol = vtk.vtkDoubleArray()
+    rmsCol.SetName("Root Mean Square")
+    maxCol = vtk.vtkDoubleArray()
+    maxCol.SetName("Maximum Distance")
+    minCol = vtk.vtkDoubleArray()
+    minCol.SetName("Minimum Distance")
+    
+    # Calculate closest point to point distance
+    nOfMovingFiducialPoints = inputMovingFiducials.GetNumberOfFiducials()
+    nOfFixedFiducialPoints = inputFixedFiducials.GetNumberOfFiducials()
+    totalDistance = 0
+    totalSquareDistance = 0
+    for i in range(0, nOfMovingFiducialPoints):
+      movingPointWorld = [0,0,0]
+      inputMovingFiducials.GetNthControlPointPositionWorld(i, movingPointWorld)
+      for j in range(0, nOfFixedFiducialPoints):
+        fixedPointWorld = [0,0,0]
+        inputFixedFiducials.GetNthControlPointPositionWorld(j, fixedPointWorld)
+        dist = (vtk.vtkMath.Distance2BetweenPoints(movingPointWorld,fixedPointWorld)) ** 0.5
+        if j == 0:
+          minDist = dist
+          closestLabel = inputFixedFiducials.GetNthControlPointLabel(j)
+        elif minDist > dist:
+          minDist = dist
+          closestLabel = inputFixedFiducials.GetNthControlPointLabel(j)
+      indexCol.InsertNextValue(i)
+      labelCol.InsertNextValue(inputMovingFiducials.GetNthControlPointLabel(i) + " to " + closestLabel)
+      distanceCol.InsertNextValue(minDist)
+      if i == 0:
+        maxMinDist = minDist
+        minMinDist = minDist
+      elif minMinDist > minDist:
+        minMinDist = minDist
+      elif maxMinDist < minDist:
+        maxMinDist = minDist
+      totalDistance += minDist
+      totalSquareDistance += minDist ** 2
+      
+    # Store min and max
+    maxCol.InsertNextValue(maxMinDist)
+    minCol.InsertNextValue(minMinDist)
+    
+    # Calculate and store mean and rms
+    mean = totalDistance / nOfMovingFiducialPoints
+    meanCol.InsertNextValue(mean)
+    rms = (totalSquareDistance / nOfMovingFiducialPoints) ** 0.5
+    rmsCol.InsertNextValue(rms)
+      
+    # Create a table from result arrays
+    resultTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Minimum Point to Point Distance")
+    resultTableNode.AddColumn(indexCol)
+    resultTableNode.AddColumn(labelCol)
+    resultTableNode.AddColumn(distanceCol)
+    
+    # Create error metric table
+    errorMetricTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Fiducial to Fiducial Error Metrics Table")
+    errorMetricTableNode.AddColumn(meanCol)
+    errorMetricTableNode.AddColumn(rmsCol)
+    errorMetricTableNode.AddColumn(maxCol)
+    errorMetricTableNode.AddColumn(minCol)
+    
+    # Show table in view layout
+    slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
+    slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(errorMetricTableNode.GetID())
+    slicer.app.applicationLogic().PropagateTableSelection()
+      
+    
+        
+          
+  
 
 
 class FiducialtoModelDistanceTest(ScriptedLoadableModuleTest):
