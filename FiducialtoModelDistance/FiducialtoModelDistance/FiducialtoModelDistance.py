@@ -52,6 +52,8 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
     self.ui.movingFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectFiducialtoFiducial)
     self.ui.fixedFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectFiducialtoFiducial)
     self.ui.fiducialToFiducialApplyButton.connect('clicked(bool)', self.onFiducialToFiducialApplyButton)
+    self.ui.fiducialToFiducialShowPointsButton.connect('clicked(bool)', self.onFiducialPointsButton)
+    self.ui.fiducialToFiducialShowErrorMetricTableButton.connect('clicked(bool)', self.onFiducialErrorButton)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -89,6 +91,14 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
     
     self.ui.fiducialToFiducialShowPointsButton.enabled = True
     self.ui.fiducialToFiducialShowErrorMetricTableButton.enabled = True
+    
+  def onFiducialPointsButton(self):
+    logic = FiducialtoModelDistanceLogic()
+    logic.fiducialPointsTableButton()
+    
+  def onFiducialErrorButton(self):
+    logic = FiducialtoModelDistanceLogic()
+    logic.fiducialErrorTableButton()
   
 
 #
@@ -278,6 +288,8 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     maxCol.SetName("Maximum Distance")
     minCol = vtk.vtkDoubleArray()
     minCol.SetName("Minimum Distance")
+    hausdroffCol = vtk.vtkDoubleArray()
+    hausdroffCol.SetName("Hausdroff Distance")
     
     # Calculate closest point to point distance
     nOfMovingFiducialPoints = inputMovingFiducials.GetNumberOfFiducials()
@@ -310,6 +322,29 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       totalDistance += minDist
       totalSquareDistance += minDist ** 2
       
+    # Calculate Hausdorff distance
+    for i in range(0, nOfFixedFiducialPoints):
+      fixedPointWorld = [0,0,0]
+      inputFixedFiducials.GetNthControlPointPositionWorld(i, fixedPointWorld)
+      for j in range(0, nOfMovingFiducialPoints):
+        movingPointWorld = [0, 0, 0]
+        inputMovingFiducials.GetNthControlPointPositionWorld(j, movingPointWorld)
+        dist = (vtk.vtkMath.Distance2BetweenPoints(movingPointWorld,fixedPointWorld)) ** 0.5
+        if j == 0:
+          minDist2 = dist
+        elif minDist2 > dist:
+          minDist2 = dist
+      if i == 0:
+        minMinDist2 = minDist2
+      elif minMinDist2 > minDist2:
+        minMinDist2 = minDist2
+       
+    if minMinDist2 > minMinDist:
+      hausdroffDist = minMinDist2
+    else:
+      hausdroffDist = minMinDist
+    hausdroffCol.InsertNextValue(hausdroffDist)
+      
     # Store min and max
     maxCol.InsertNextValue(maxMinDist)
     minCol.InsertNextValue(minMinDist)
@@ -332,13 +367,42 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     errorMetricTableNode.AddColumn(rmsCol)
     errorMetricTableNode.AddColumn(maxCol)
     errorMetricTableNode.AddColumn(minCol)
+    errorMetricTableNode.AddColumn(hausdroffCol)
     
     # Show table in view layout
     slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
     slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(errorMetricTableNode.GetID())
     slicer.app.applicationLogic().PropagateTableSelection()
       
+  def fiducialPointsTableButton(self):
+  
+    try:
+      resultTableNode = slicer.util.getNode('Minimum Point to Point Distance')
+    except:
+      slicer.util.errorDisplay('There is no table named "Minimum Point to Point Distance"')
+      return False
+  
+    # Show table in view layout
+    slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
+    slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(resultTableNode.GetID())
+    slicer.app.applicationLogic().PropagateTableSelection()
     
+    return True
+    
+  def fiducialErrorTableButton(self):
+  
+    try:
+      errorMetricTableNode = slicer.util.getNode('Fiducial to Fiducial Error Metrics Table')
+    except:
+      slicer.util.errorDisplay('There is no table named "Fiducial to Fiducial Error Metrics Table"')
+      return False
+  
+    # Show table in view layout
+    slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
+    slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(errorMetricTableNode.GetID())
+    slicer.app.applicationLogic().PropagateTableSelection()
+    
+    return True
         
           
   
