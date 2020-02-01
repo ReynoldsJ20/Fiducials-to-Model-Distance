@@ -38,22 +38,22 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
 
-    self.ui.inputModelSelector.setMRMLScene(slicer.mrmlScene)
-    self.ui.inputFiducialSelector.setMRMLScene(slicer.mrmlScene)
-    self.ui.movingFiducialSelector.setMRMLScene(slicer.mrmlScene)
-    self.ui.fixedFiducialSelector.setMRMLScene(slicer.mrmlScene)
+    self.ui.fiducialToModelInputModelSelector.setMRMLScene(slicer.mrmlScene)
+    self.ui.fiducialToModelInputFiducialSelector.setMRMLScene(slicer.mrmlScene)
+    self.ui.fiducialToFiducialInputMovingFiducialSelector.setMRMLScene(slicer.mrmlScene)
+    self.ui.fiducialToFiducialInputFixedFiducialSelector.setMRMLScene(slicer.mrmlScene)
 
     # connections
-    self.ui.applyButton.connect('clicked(bool)', self.onModelToFiducialApplyButton)
-    self.ui.showPointsTableButton.connect('clicked(bool)', self.onPointsButton)
-    self.ui.showErrorMetricTableButton.connect('clicked(bool)', self.onErrorButton)
-    self.ui.inputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
-    self.ui.inputFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
-    self.ui.movingFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectFiducialtoFiducial)
-    self.ui.fixedFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectFiducialtoFiducial)
+    self.ui.fiducalToModelApplyButton.connect('clicked(bool)', self.onFiducalToModelApplyButton)
+    self.ui.showPointsTableButton.connect('clicked(bool)', self.onShowPointsFromSurfaceDistanceTableButton)
+    self.ui.showErrorMetricTableButton.connect('clicked(bool)', self.onFiducialToModelShowErrorMetricTableButton)
+    self.ui.fiducialToModelInputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.ui.fiducialToModelInputFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.ui.fiducialToFiducialInputMovingFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectFiducialtoFiducial)
+    self.ui.fiducialToFiducialInputFixedFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelectFiducialtoFiducial)
     self.ui.fiducialToFiducialApplyButton.connect('clicked(bool)', self.onFiducialToFiducialApplyButton)
-    self.ui.fiducialToFiducialShowPointsButton.connect('clicked(bool)', self.onFiducialPointsButton)
-    self.ui.fiducialToFiducialShowErrorMetricTableButton.connect('clicked(bool)', self.onFiducialErrorButton)
+    self.ui.fiducialToFiducialShowPointsButton.connect('clicked(bool)', self.onShowClosestPointToPointDistanceTableButton)
+    self.ui.fiducialToFiducialShowErrorMetricTableButton.connect('clicked(bool)', self.onFiducialToFiducialShowErrorMetricTable)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -65,38 +65,38 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
     pass
 
   def onSelect(self):
-    self.ui.applyButton.enabled = self.ui.inputModelSelector.currentNode() and self.ui.inputFiducialSelector.currentNode()
+    self.ui.fiducalToModelApplyButton.enabled = self.ui.fiducialToModelInputModelSelector.currentNode() and self.ui.fiducialToModelInputFiducialSelector.currentNode()
     
   def onSelectFiducialtoFiducial(self):
-    self.ui.fiducialToFiducialApplyButton.enabled = self.ui.movingFiducialSelector.currentNode() and self.ui.fixedFiducialSelector.currentNode()
+    self.ui.fiducialToFiducialApplyButton.enabled = self.ui.fiducialToFiducialInputMovingFiducialSelector.currentNode() and self.ui.fiducialToFiducialInputFixedFiducialSelector.currentNode()
 
-  def onModelToFiducialApplyButton(self):
+  def onFiducalToModelApplyButton(self):
     logic = FiducialtoModelDistanceLogic()
-    logic.runFiducialToModel(self.ui.inputModelSelector.currentNode(), self.ui.inputFiducialSelector.currentNode())
+    logic.runFiducialToModel(self.ui.fiducialToModelInputModelSelector.currentNode(), self.ui.fiducialToModelInputFiducialSelector.currentNode())
     
     self.ui.showPointsTableButton.enabled = True
     self.ui.showErrorMetricTableButton.enabled = True
     
-  def onPointsButton(self):
+  def onShowPointsFromSurfaceDistanceTableButton(self):
     logic = FiducialtoModelDistanceLogic()
     logic.pointsTableButton()
     
-  def onErrorButton(self):
+  def onFiducialToModelShowErrorMetricTableButton(self):
     logic = FiducialtoModelDistanceLogic()
     logic.errorTableButton()
     
   def onFiducialToFiducialApplyButton(self):
     logic = FiducialtoModelDistanceLogic()
-    logic.runFiducialToFiducial(self.ui.fixedFiducialSelector.currentNode(), self.ui.movingFiducialSelector.currentNode())
+    logic.runFiducialToFiducial(self.ui.fiducialToFiducialInputFixedFiducialSelector.currentNode(), self.ui.fiducialToFiducialInputMovingFiducialSelector.currentNode())
     
     self.ui.fiducialToFiducialShowPointsButton.enabled = True
     self.ui.fiducialToFiducialShowErrorMetricTableButton.enabled = True
     
-  def onFiducialPointsButton(self):
+  def onShowClosestPointToPointDistanceTableButton(self):
     logic = FiducialtoModelDistanceLogic()
     logic.fiducialPointsTableButton()
     
-  def onFiducialErrorButton(self):
+  def onFiducialToFiducialShowErrorMetricTable(self):
     logic = FiducialtoModelDistanceLogic()
     logic.fiducialErrorTableButton()
   
@@ -429,5 +429,68 @@ class FiducialtoModelDistanceTest(ScriptedLoadableModuleTest):
   def test_FiducialtoModelDistance1(self):
 
     self.delayDisplay("Starting the test")
-    #
-    self.delayDisplay('Test passed!')
+    
+    # Create a 100 x 100 x 100mm cube
+    cube = vtk.vtkCubeSource()
+    cube.SetBounds(-50, 50, -50, 50, -50, 50)
+    cube.Update()
+    modelsLogic = slicer.modules.models.logic()
+    modelsLogic.AddModel(cube.GetOutput())
+    modelNode = slicer.util.getNode("Model")
+    modelNode.GetDisplayNode().SetSliceIntersectionVisibility(1)
+    
+    # function for adding fiducial points
+    def addFiducialPoints(title, fiducialPoints):
+      fiducialNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLMarkupsFiducialNode', title)
+      point = vtk.vtkVector3d()
+      for fiducialPoint in fiducialPoints:
+        point.Set(fiducialPoint[0], fiducialPoint[1], fiducialPoint[2])
+        fiducialNode.AddControlPointWorld(point)
+        
+    # Add a set of moving fiducial points and a set of fixed fiducial points
+    movingFiducialPoints = [[51, 0, 0], [-52, 0, 0], [0, 51, 0], [0, -52, 0], [0, 0, 51], [0, 0, -52]]
+    fixedFiducialPoints = [[50, 0, 0], [-50, 0, 0], [0, 50, 0], [0, -50, 0], [0, 0, 50], [0, 0, -50]]
+    
+    addFiducialPoints("Moving", movingFiducialPoints)
+    addFiducialPoints("Fixed", fixedFiducialPoints)
+    
+    # Change color of moving fiducial node to blue
+    fixedFiducialNode = slicer.util.getNode('Fixed')
+    movingFiducialNode = slicer.util.getNode('Moving')
+    displayNode = movingFiducialNode.GetDisplayNode()
+    displayNode.SetSelectedColor(0,0,1)
+    
+    # Some display settings
+    layoutManager = slicer.app.layoutManager()
+    threeDWidget = layoutManager.threeDWidget(0)
+    threeDView = threeDWidget.threeDView()
+    threeDView.resetFocalPoint()
+    
+    # Run Fiducial to Model Distance
+    moduleWidget = slicer.modules.FiducialtoModelDistanceWidget
+    moduleWidget.ui.fiducialToModelInputFiducialSelector.setCurrentNode(movingFiducialNode)
+    moduleWidget.ui.fiducialToModelInputModelSelector.setCurrentNode(modelNode)
+    moduleWidget.onFiducalToModelApplyButton()
+    moduleWidget.onShowPointsFromSurfaceDistanceTableButton()
+    moduleWidget.onFiducialToModelShowErrorMetricTableButton()
+    self.delayDisplay('Fiducial to Model Distance Test Passed!')
+    
+    # Run Fiducial to Fiducial Distance
+    moduleWidget.ui.fiducialToFiducialInputMovingFiducialSelector.setCurrentNode(movingFiducialNode)
+    moduleWidget.ui.fiducialToFiducialInputFixedFiducialSelector.setCurrentNode(fixedFiducialNode)
+    moduleWidget.onFiducialToFiducialApplyButton()
+    moduleWidget.onShowClosestPointToPointDistanceTableButton()
+    moduleWidget.onFiducialToFiducialShowErrorMetricTable()
+    self.delayDisplay('Fiducial to Fiducial Distance Test Passed!')
+    
+    
+    self.delayDisplay("Test passed!")
+    
+    logging.info("""Mean Distances should be 1.5mm
+Root Mean Square should be 1.581mm
+Maximum Distance should be 2mm
+Minimum Distance should be 1mm
+Hausdorff Distance should be 1mm""")
+    
+    slicer.util.messageBox("""See Python Interactor for Correct Error Metric Values
+    Compare These Values Against the Values in the Tables""")
