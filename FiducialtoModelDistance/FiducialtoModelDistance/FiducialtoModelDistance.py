@@ -250,7 +250,6 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       return False
   
     # Show table in view layout
-    #slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
     slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(resultTableNode.GetID())
     slicer.app.applicationLogic().PropagateTableSelection()
     
@@ -265,7 +264,6 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       return False
   
     # Show table in view layout
-    #slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
     slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(errorMetricTableNode.GetID())
     slicer.app.applicationLogic().PropagateTableSelection()
     
@@ -384,7 +382,6 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       return False
   
     # Show table in view layout
-    slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
     slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(resultTableNode.GetID())
     slicer.app.applicationLogic().PropagateTableSelection()
     
@@ -399,7 +396,6 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       return False
   
     # Show table in view layout
-    slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
     slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(errorMetricTableNode.GetID())
     slicer.app.applicationLogic().PropagateTableSelection()
     
@@ -493,5 +489,5 @@ Maximum Distance should be 2mm
 Minimum Distance should be 1mm
 Hausdorff Distance should be 1mm""")
     
-    slicer.util.messageBox("""See Python Interactor for Correct Error Metric Values
-    Compare These Values Against the Values in the Tables""")
+    slicer.util.messageBox("""See Python Interactor for Correct Error Metric Values 
+Compare These Values Against the Values in the Tables""")
