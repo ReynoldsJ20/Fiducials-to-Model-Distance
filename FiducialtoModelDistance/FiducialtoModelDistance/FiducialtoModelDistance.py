@@ -16,7 +16,7 @@ class FiducialtoModelDistance(ScriptedLoadableModule):
     self.parent.title = "Fiducial to Model Distance"
     self.parent.categories = ["Quantification"]
     self.parent.dependencies = []
-    self.parent.contributors = ["Andras Lasso (Queen's University), Jesse Reynolds (Canterbury District Health Board)"] # replace with "Firstname Lastname (Organization)"
+    self.parent.contributors = ["Jesse Reynolds (Canterbury District Health Board) with assistance from Andras Lasso (Queen's University), "] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
 This module computes the distances between a set of fiducial points and a surface model. The results are displayed in a table.
 """
@@ -226,7 +226,7 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     resultTableNode.AddColumn(distanceCol)
     
     # Create a table for Error Metrics
-    errorMetricTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Error Metrics Table")
+    errorMetricTableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Fiducial To Model Error Metrics Table")
     errorMetricTableNode.AddColumn(meanOfAbsCol)
     errorMetricTableNode.AddColumn(rmsCol)
     errorMetricTableNode.AddColumn(maxCol)
@@ -250,7 +250,7 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       return False
   
     # Show table in view layout
-    slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
+    #slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
     slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(resultTableNode.GetID())
     slicer.app.applicationLogic().PropagateTableSelection()
     
@@ -259,13 +259,13 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
   def errorTableButton(self):
   
     try:
-      errorMetricTableNode = slicer.util.getNode('Error Metrics Table')
+      errorMetricTableNode = slicer.util.getNode('Fiducial To Model Error Metrics Table')
     except:
-      slicer.util.errorDisplay('There is no table named "Error Metrics Table"')
+      slicer.util.errorDisplay('There is no table named "Fiducial To Model Error Metrics Table"')
       return False
   
     # Show table in view layout
-    slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
+    #slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
     slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(errorMetricTableNode.GetID())
     slicer.app.applicationLogic().PropagateTableSelection()
     
@@ -322,7 +322,7 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       totalDistance += minDist
       totalSquareDistance += minDist ** 2
       
-    # Calculate Hausdorff distance
+    # Calculate min p2p distance from fixed to moving fiducials for Hausdorff distance
     for i in range(0, nOfFixedFiducialPoints):
       fixedPointWorld = [0,0,0]
       inputFixedFiducials.GetNthControlPointPositionWorld(i, fixedPointWorld)
@@ -338,7 +338,8 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
         minMinDist2 = minDist2
       elif minMinDist2 > minDist2:
         minMinDist2 = minDist2
-       
+    
+    # Hausdorff Distance is the max of the minimum distances
     if minMinDist2 > minMinDist:
       hausdroffDist = minMinDist2
     else:
