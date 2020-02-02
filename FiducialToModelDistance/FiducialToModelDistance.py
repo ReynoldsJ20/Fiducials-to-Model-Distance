@@ -6,10 +6,10 @@ import logging
 from decimal import Decimal
 
 #
-# FiducialtoModelDistance
+# FiducialToModelDistance
 #
 
-class FiducialtoModelDistance(ScriptedLoadableModule):
+class FiducialToModelDistance(ScriptedLoadableModule):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
@@ -25,16 +25,16 @@ This module computes the distances between a set of fiducial points and a surfac
 This file was originally developed by Andras Lasso (Queen's University) and Jesse Reynolds (Canterbury District Health Board)."""
 
 #
-# FiducialtoModelDistanceWidget
+# FiducialToModelDistanceWidget
 #
 
-class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
+class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget):
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
 
     # Load widget from .ui file (created by Qt Designer)
-    uiWidget = slicer.util.loadUI(self.resourcePath('UI/FiducialtoModelDistance.ui'))
+    uiWidget = slicer.util.loadUI(self.resourcePath('UI/FiducialToModelDistance.ui'))
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
 
@@ -71,41 +71,41 @@ class FiducialtoModelDistanceWidget(ScriptedLoadableModuleWidget):
     self.ui.fiducialToFiducialApplyButton.enabled = self.ui.fiducialToFiducialInputMovingFiducialSelector.currentNode() and self.ui.fiducialToFiducialInputFixedFiducialSelector.currentNode()
 
   def onFiducalToModelApplyButton(self):
-    logic = FiducialtoModelDistanceLogic()
+    logic = FiducialToModelDistanceLogic()
     logic.runFiducialToModel(self.ui.fiducialToModelInputModelSelector.currentNode(), self.ui.fiducialToModelInputFiducialSelector.currentNode())
     
     self.ui.showPointsTableButton.enabled = True
     self.ui.showErrorMetricTableButton.enabled = True
     
   def onShowPointsFromSurfaceDistanceTableButton(self):
-    logic = FiducialtoModelDistanceLogic()
+    logic = FiducialToModelDistanceLogic()
     logic.pointsTableButton()
     
   def onFiducialToModelShowErrorMetricTableButton(self):
-    logic = FiducialtoModelDistanceLogic()
+    logic = FiducialToModelDistanceLogic()
     logic.errorTableButton()
     
   def onFiducialToFiducialApplyButton(self):
-    logic = FiducialtoModelDistanceLogic()
+    logic = FiducialToModelDistanceLogic()
     logic.runFiducialToFiducial(self.ui.fiducialToFiducialInputFixedFiducialSelector.currentNode(), self.ui.fiducialToFiducialInputMovingFiducialSelector.currentNode())
     
     self.ui.fiducialToFiducialShowPointsButton.enabled = True
     self.ui.fiducialToFiducialShowErrorMetricTableButton.enabled = True
     
   def onShowClosestPointToPointDistanceTableButton(self):
-    logic = FiducialtoModelDistanceLogic()
+    logic = FiducialToModelDistanceLogic()
     logic.fiducialPointsTableButton()
     
   def onFiducialToFiducialShowErrorMetricTable(self):
-    logic = FiducialtoModelDistanceLogic()
+    logic = FiducialToModelDistanceLogic()
     logic.fiducialErrorTableButton()
   
 
 #
-# FiducialtoModelDistanceLogic
+# FiducialToModelDistanceLogic
 #
 
-class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
+class FiducialToModelDistanceLogic(ScriptedLoadableModuleLogic):
 
   def hasModelData(self,inputModel):
     
@@ -128,14 +128,17 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
       return False
     return True
 
-  def isValidInputData(self, inputModel, inputFiducials):
+  def isValidInputData(self, input1, input2):
    
     # Validates if the output is not the same as input
-    if not inputModel:
+    if not input1:
       logging.debug('isValidInputData failed: no input model node defined')
       return False
-    if not inputFiducials:
+    if not input2:
       logging.debug('isValidInputData failed: no input fiducial node defined')
+      return False
+    if input1.GetID() == input2.GetID():
+      logging.debug('isValidInputOutputData failed: input and output are the same.')
       return False
     return True
 
@@ -270,6 +273,18 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     return True
     
   def runFiducialToFiducial(self, inputFixedFiducials, inputMovingFiducials):
+  
+    if not self.hasFiducialData(inputFixedFiducials):
+      slicer.util.errorDisplay('Invalid Fixed Input Fiducials - Check Error Log For Details')
+      return False
+      
+    if not self.hasFiducialData(inputMovingFiducials):
+      slicer.util.errorDisplay('Invalid Input Moving Fiducials - Check Error Log For Details')
+      return False
+      
+    if not self.isValidInputData(inputFixedFiducials, inputMovingFiducials):
+      slicer.util.errorDisplay('Invalid Inputs Defined - Check Error Log For Details')
+      return False
     
     # Create arrays to store data
     indexCol = vtk.vtkIntArray()
@@ -286,8 +301,8 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     maxCol.SetName("Maximum Distance")
     minCol = vtk.vtkDoubleArray()
     minCol.SetName("Minimum Distance")
-    hausdroffCol = vtk.vtkDoubleArray()
-    hausdroffCol.SetName("Hausdroff Distance")
+    hausdorffCol = vtk.vtkDoubleArray()
+    hausdorffCol.SetName("Hausdorff Distance")
     
     # Calculate closest point to point distance
     nOfMovingFiducialPoints = inputMovingFiducials.GetNumberOfFiducials()
@@ -339,10 +354,10 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     
     # Hausdorff Distance is the max of the minimum distances
     if minMinDist2 > minMinDist:
-      hausdroffDist = minMinDist2
+      hausdorffDist = minMinDist2
     else:
-      hausdroffDist = minMinDist
-    hausdroffCol.InsertNextValue(hausdroffDist)
+      hausdorffDist = minMinDist
+    hausdorffCol.InsertNextValue(hausdorffDist)
       
     # Store min and max
     maxCol.InsertNextValue(maxMinDist)
@@ -366,7 +381,7 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
     errorMetricTableNode.AddColumn(rmsCol)
     errorMetricTableNode.AddColumn(maxCol)
     errorMetricTableNode.AddColumn(minCol)
-    errorMetricTableNode.AddColumn(hausdroffCol)
+    errorMetricTableNode.AddColumn(hausdorffCol)
     
     # Show table in view layout
     slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
@@ -405,7 +420,7 @@ class FiducialtoModelDistanceLogic(ScriptedLoadableModuleLogic):
   
 
 
-class FiducialtoModelDistanceTest(ScriptedLoadableModuleTest):
+class FiducialToModelDistanceTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -421,9 +436,9 @@ class FiducialtoModelDistanceTest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_FiducialtoModelDistance1()
+    self.test_FiducialToModelDistance1()
 
-  def test_FiducialtoModelDistance1(self):
+  def test_FiducialToModelDistance1(self):
 
     self.delayDisplay("Starting the test")
     
@@ -464,7 +479,7 @@ class FiducialtoModelDistanceTest(ScriptedLoadableModuleTest):
     threeDView.resetFocalPoint()
     
     # Run Fiducial to Model Distance
-    moduleWidget = slicer.modules.FiducialtoModelDistanceWidget
+    moduleWidget = slicer.modules.FiducialToModelDistanceWidget
     moduleWidget.ui.fiducialToModelInputFiducialSelector.setCurrentNode(movingFiducialNode)
     moduleWidget.ui.fiducialToModelInputModelSelector.setCurrentNode(modelNode)
     moduleWidget.onFiducalToModelApplyButton()
