@@ -4,6 +4,7 @@ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 from decimal import Decimal
+from slicer.util import NodeModify, VTKObservationMixin
 
 #
 # FiducialToModelDistance
@@ -28,10 +29,36 @@ This file was originally developed by Andras Lasso (Queen's University) and Jess
 # FiducialToModelDistanceWidget
 #
 
-class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget):
+class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
+
+  def __init__(self, parent=None):
+    ScriptedLoadableModuleWidget.__init__(self, parent)
+    VTKObservationMixin.__init__(self)
+    self.logic = None
+    self._parameterNode = None
 
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
+    
+    self.logic = FiducialToModelDistanceLogic()
+    # This will use createParameterNode with the provided default options
+    self.setParameterNode(self.logic.getParameterNode())
+    
+    # Parameter set selector
+    self.parameterNodeSelector = slicer.qMRMLNodeComboBox()
+    self.parameterNodeSelector.nodeTypes = ["vtkMRMLScriptedModuleNode"]
+    self.parameterNodeSelector.addAttribute( "vtkMRMLScriptedModuleNode", "ModuleName", "FiducialToModelDistance" )
+    self.parameterNodeSelector.selectNodeUponCreation = True
+    self.parameterNodeSelector.addEnabled = True
+    self.parameterNodeSelector.renameEnabled = True
+    self.parameterNodeSelector.removeEnabled = True
+    self.parameterNodeSelector.noneEnabled = False
+    self.parameterNodeSelector.showHidden = True
+    self.parameterNodeSelector.showChildNodeTypes = False
+    self.parameterNodeSelector.baseName = "FiducialToModelDistance"
+    self.parameterNodeSelector.setMRMLScene( slicer.mrmlScene )
+    self.parameterNodeSelector.setToolTip( "Pick parameter set" )
+    self.layout.addWidget(self.parameterNodeSelector)
 
     # Load widget from .ui file (created by Qt Designer)
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/FiducialToModelDistance.ui'))
@@ -42,6 +69,19 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget):
     self.ui.fiducialToModelInputFiducialSelector.setMRMLScene(slicer.mrmlScene)
     self.ui.fiducialToFiducialInputMovingFiducialSelector.setMRMLScene(slicer.mrmlScene)
     self.ui.fiducialToFiducialInputFixedFiducialSelector.setMRMLScene(slicer.mrmlScene)
+    
+    # parameter node connections
+    self.parameterNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.setParameterNode)
+    #self.parameterNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.printParameters)
+    self.parameterNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.updateGUIFromParameterNode)
+    
+    
+    # updateParameterNodeFromGui
+    self.ui.fiducialToModelInputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
+    #self.ui.fiducialToModelInputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.testFunction) #delete this
+    self.ui.fiducialToModelInputFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
+    self.ui.fiducialToFiducialInputMovingFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
+    self.ui.fiducialToFiducialInputFixedFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
 
     # connections
     self.ui.fiducalToModelApplyButton.connect('clicked(bool)', self.onFiducalToModelApplyButton)
@@ -60,9 +100,87 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget):
 
     # Refresh Apply button state
     self.onSelect()
+    
+    # Update GUI
+    print('bottom of widget update GUI')
+    self.updateGUIFromParameterNode()
 
   def cleanup(self):
-    pass
+    self.removeObservers()
+    
+  def parameterNode(self):
+    return self._parameterNode
+    
+  def setNodeBoxesToNone(self):
+    self.ui.fiducialToModelInputModelSelector.setCurrentNode(None)
+    self.ui.fiducialToModelInputFiducialSelector.setCurrentNode(None)
+    self.ui.fiducialToFiducialInputMovingFiducialSelector.setCurrentNode(None)
+    self.ui.fiducialToFiducialInputFixedFiducialSelector.setCurrentNode(None)
+    
+    
+  def testFunction(self, inputNode):
+    print('You just changed to' + str(inputNode.GetID()))
+    
+  def printParameters(self):
+    print(self._parameterNode.GetName())
+    print(self._parameterNode.GetParameter("FiducialToModelInputModel"))
+    print(self._parameterNode.GetParameter("FiducialToModelInputFiducials"))
+    print(self._parameterNode.GetParameter("FiducialToFiducialInputMovingFiducials"))
+    print(self._parameterNode.GetParameter("FiducialToFiducialInputFixedFiducials"))
+
+  def setParameterNode(self, inputParameterNode):
+    if inputParameterNode == self._parameterNode:
+      return
+    if self._parameterNode is not None:
+      self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
+    if inputParameterNode is not None:
+      self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
+    self._parameterNode = inputParameterNode
+    
+  def setParameter(self, parameterName, nodeBox):
+    if nodeBox.currentNode() is None:
+      return
+    with NodeModify(self._parameterNode):
+      self._parameterNode.SetParameter(parameterName, str(nodeBox.currentNode().GetID()))
+    
+  def setGUIInputBoxes(self, nodeBox, parameterName):
+    #if self._parameterNode.GetParameter(parameterName) == "":
+       #return nodeBox.setCurrentNode(None)
+    return nodeBox.setCurrentNode(slicer.util.getNode(self._parameterNode.GetParameter(parameterName)))
+           
+  def updateGUIFromParameterNode(self, caller=None, event=None):
+    """
+    Query all the parameters in the parameterNode,
+    and update the GUI state accordingly if something has changed.
+    """
+    
+    self.removeObservers()
+    
+    if not self.parameterNode():
+      return
+        
+    self.setGUIInputBoxes(self.ui.fiducialToModelInputModelSelector, "FiducialToModelInputModel")
+    self.setGUIInputBoxes(self.ui.fiducialToModelInputFiducialSelector, "FiducialToModelInputFiducials")
+    self.setGUIInputBoxes(self.ui.fiducialToFiducialInputMovingFiducialSelector, "FiducialToFiducialInputMovingFiducials")
+    self.setGUIInputBoxes(self.ui.fiducialToFiducialInputFixedFiducialSelector, "FiducialToFiducialInputFixedFiducials")
+    
+    self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
+    print('update GUI just ran') 
+    
+    
+      
+  def updateParameterNodeFromGUI(self):
+
+    if self._parameterNode is None:
+      return
+    
+    self.setParameter("FiducialToModelInputModel", self.ui.fiducialToModelInputModelSelector)
+    self.setParameter("FiducialToModelInputFiducials", self.ui.fiducialToModelInputFiducialSelector)
+    self.setParameter("FiducialToFiducialInputMovingFiducials", self.ui.fiducialToFiducialInputMovingFiducialSelector)
+    self.setParameter("FiducialToFiducialInputFixedFiducials", self.ui.fiducialToFiducialInputFixedFiducialSelector)
+    
+    print('this is from update parameters from GUI')
+    self.printParameters()
 
   def onSelect(self):
     self.ui.fiducalToModelApplyButton.enabled = self.ui.fiducialToModelInputModelSelector.currentNode() and self.ui.fiducialToModelInputFiducialSelector.currentNode()
