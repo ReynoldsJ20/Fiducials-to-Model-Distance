@@ -4,7 +4,7 @@ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 from decimal import Decimal
-from slicer.util import NodeModify, VTKObservationMixin
+from slicer.util import VTKObservationMixin
 
 #
 # FiducialToModelDistance
@@ -23,7 +23,7 @@ This module computes the distances between a set of fiducial points and a surfac
 """
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
     self.parent.acknowledgementText = """
-This file was originally developed by Andras Lasso (Queen's University) and Jesse Reynolds (Canterbury District Health Board)."""
+This file was originally developed by Jesse Reynolds (Canterbury District Health Board) with assistance from Andras Lasso (Queen's University)."""
 
 #
 # FiducialToModelDistanceWidget
@@ -40,11 +40,17 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
   def setup(self):
     ScriptedLoadableModuleWidget.setup(self)
     
+    # Create a new parameterNode
     self.logic = FiducialToModelDistanceLogic()
-    # This will use createParameterNode with the provided default options
     self.setParameterNode(self.logic.getParameterNode())
     
-    # Parameter set selector
+    # Parameter Node Collapsible Button
+    self.parameterSetSelectionCollapsibleButton = ctk.ctkCollapsibleButton()
+    self.parameterSetSelectionCollapsibleButton.text = "Parameter Node"
+    self.layout.addWidget(self.parameterSetSelectionCollapsibleButton)
+    parameterSetSelectionFormLayout = qt.QFormLayout(self.parameterSetSelectionCollapsibleButton)
+    
+    # Parameter Node Selector
     self.parameterNodeSelector = slicer.qMRMLNodeComboBox()
     self.parameterNodeSelector.nodeTypes = ["vtkMRMLScriptedModuleNode"]
     self.parameterNodeSelector.addAttribute( "vtkMRMLScriptedModuleNode", "ModuleName", "FiducialToModelDistance" )
@@ -57,10 +63,10 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
     self.parameterNodeSelector.showChildNodeTypes = False
     self.parameterNodeSelector.baseName = "FiducialToModelDistance"
     self.parameterNodeSelector.setMRMLScene( slicer.mrmlScene )
-    self.parameterNodeSelector.setToolTip( "Pick parameter set" )
-    self.layout.addWidget(self.parameterNodeSelector)
+    self.parameterNodeSelector.setToolTip( "Pick parameter Node" )
+    parameterSetSelectionFormLayout.addRow("Parameter Node: ", self.parameterNodeSelector)
 
-    # Load widget from .ui file (created by Qt Designer)
+    # Load rest of the widget from .ui file (created by Qt Designer)
     uiWidget = slicer.util.loadUI(self.resourcePath('UI/FiducialToModelDistance.ui'))
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
@@ -70,20 +76,17 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
     self.ui.fiducialToFiducialInputMovingFiducialSelector.setMRMLScene(slicer.mrmlScene)
     self.ui.fiducialToFiducialInputFixedFiducialSelector.setMRMLScene(slicer.mrmlScene)
     
-    # parameter node connections
+    # parameter node selector connections
     self.parameterNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.setParameterNode)
-    #self.parameterNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.printParameters)
     self.parameterNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.updateGUIFromParameterNode)
     
-    
-    # updateParameterNodeFromGui
-    self.ui.fiducialToModelInputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
-    #self.ui.fiducialToModelInputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.testFunction) #delete this
-    self.ui.fiducialToModelInputFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
-    self.ui.fiducialToFiducialInputMovingFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
-    self.ui.fiducialToFiducialInputFixedFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUI)
+    # Update Parameter Node From GUI connections
+    self.ui.fiducialToModelInputModelSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUIFiducialToModelInputModel)
+    self.ui.fiducialToModelInputFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUIFiducialToModelInputFiducials)
+    self.ui.fiducialToFiducialInputMovingFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUIFiducialToFiducialInputMovingFiducials)
+    self.ui.fiducialToFiducialInputFixedFiducialSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.updateParameterNodeFromGUIFiducialToFiducialInputFixedFiducials)
 
-    # connections
+    # Other Connections
     self.ui.fiducalToModelApplyButton.connect('clicked(bool)', self.onFiducalToModelApplyButton)
     self.ui.showPointsTableButton.connect('clicked(bool)', self.onShowPointsFromSurfaceDistanceTableButton)
     self.ui.showErrorMetricTableButton.connect('clicked(bool)', self.onFiducialToModelShowErrorMetricTableButton)
@@ -101,32 +104,11 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
     # Refresh Apply button state
     self.onSelect()
     
-    # Update GUI
-    print('bottom of widget update GUI')
+    # Update GUI From Parameter Node
     self.updateGUIFromParameterNode()
 
   def cleanup(self):
     self.removeObservers()
-    
-  def parameterNode(self):
-    return self._parameterNode
-    
-  def setNodeBoxesToNone(self):
-    self.ui.fiducialToModelInputModelSelector.setCurrentNode(None)
-    self.ui.fiducialToModelInputFiducialSelector.setCurrentNode(None)
-    self.ui.fiducialToFiducialInputMovingFiducialSelector.setCurrentNode(None)
-    self.ui.fiducialToFiducialInputFixedFiducialSelector.setCurrentNode(None)
-    
-    
-  def testFunction(self, inputNode):
-    print('You just changed to' + str(inputNode.GetID()))
-    
-  def printParameters(self):
-    print(self._parameterNode.GetName())
-    print(self._parameterNode.GetParameter("FiducialToModelInputModel"))
-    print(self._parameterNode.GetParameter("FiducialToModelInputFiducials"))
-    print(self._parameterNode.GetParameter("FiducialToFiducialInputMovingFiducials"))
-    print(self._parameterNode.GetParameter("FiducialToFiducialInputFixedFiducials"))
 
   def setParameterNode(self, inputParameterNode):
     if inputParameterNode == self._parameterNode:
@@ -137,51 +119,66 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
       self.addObserver(inputParameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
     self._parameterNode = inputParameterNode
     
+  # Used for updating parameter node when changes are made to input combo boxes in GUI
   def setParameter(self, parameterName, nodeBox):
     if nodeBox.currentNode() is None:
-      return
-    with NodeModify(self._parameterNode):
-      self._parameterNode.SetParameter(parameterName, str(nodeBox.currentNode().GetID()))
+      return self._parameterNode.SetParameter(parameterName, "")
+    self._parameterNode.SetParameter(parameterName, str(nodeBox.currentNode().GetID()))
     
+  # Used in updateGUIFromParameterNode to update input combo boxes
   def setGUIInputBoxes(self, nodeBox, parameterName):
-    #if self._parameterNode.GetParameter(parameterName) == "":
-       #return nodeBox.setCurrentNode(None)
+    if self._parameterNode.GetParameter(parameterName) == "":
+       return nodeBox.setCurrentNode(None)
     return nodeBox.setCurrentNode(slicer.util.getNode(self._parameterNode.GetParameter(parameterName)))
-           
+    
+  # Used in updateGUIFromParameterNode to update state of the 'show table' buttons
+  def enableButtons(self, parameterName, buttonName):
+   if self._parameterNode.GetParameter(parameterName) == "True":
+     buttonName.enabled = True
+   else:
+     buttonName.enabled = False
+         
   def updateGUIFromParameterNode(self, caller=None, event=None):
     """
     Query all the parameters in the parameterNode,
     and update the GUI state accordingly if something has changed.
     """
     
-    self.removeObservers()
-    
-    if not self.parameterNode():
+    if self._parameterNode is None:
       return
+      
+    self.enableButtons("EnableShowPointsFromSurfaceDistanceTableButton", self.ui.showPointsTableButton)
+    self.enableButtons("EnableFiducialToModelErrorMetricButton", self.ui.showErrorMetricTableButton)
+    self.enableButtons("EnableShowClosestPointToPointDistanceTableButton", self.ui.fiducialToFiducialShowPointsButton)
+    self.enableButtons("EnableFiducialToFiducialDistanceTableButton", self.ui.fiducialToFiducialShowErrorMetricTableButton)
         
     self.setGUIInputBoxes(self.ui.fiducialToModelInputModelSelector, "FiducialToModelInputModel")
     self.setGUIInputBoxes(self.ui.fiducialToModelInputFiducialSelector, "FiducialToModelInputFiducials")
     self.setGUIInputBoxes(self.ui.fiducialToFiducialInputMovingFiducialSelector, "FiducialToFiducialInputMovingFiducials")
     self.setGUIInputBoxes(self.ui.fiducialToFiducialInputFixedFiducialSelector, "FiducialToFiducialInputFixedFiducials")
-    
-    self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
-    print('update GUI just ran') 
-    
-    
-      
-  def updateParameterNodeFromGUI(self):
-
+  
+  # Each combobox has its own function to update the parameter node when changed. Having one fuction to update parameters was causing issues when changing parameter nodes in parameter node combo box  
+  def updateParameterNodeFromGUIFiducialToModelInputModel(self):
     if self._parameterNode is None:
       return
-    
     self.setParameter("FiducialToModelInputModel", self.ui.fiducialToModelInputModelSelector)
-    self.setParameter("FiducialToModelInputFiducials", self.ui.fiducialToModelInputFiducialSelector)
-    self.setParameter("FiducialToFiducialInputMovingFiducials", self.ui.fiducialToFiducialInputMovingFiducialSelector)
-    self.setParameter("FiducialToFiducialInputFixedFiducials", self.ui.fiducialToFiducialInputFixedFiducialSelector)
     
-    print('this is from update parameters from GUI')
-    self.printParameters()
-
+  def updateParameterNodeFromGUIFiducialToModelInputFiducials(self):
+    if self._parameterNode is None:
+      return
+    self.setParameter("FiducialToModelInputFiducials", self.ui.fiducialToModelInputFiducialSelector)
+    
+  def updateParameterNodeFromGUIFiducialToFiducialInputMovingFiducials(self):
+    if self._parameterNode is None:
+      return
+    self.setParameter("FiducialToFiducialInputMovingFiducials", self.ui.fiducialToFiducialInputMovingFiducialSelector)
+    
+  def updateParameterNodeFromGUIFiducialToFiducialInputFixedFiducials(self):
+    if self._parameterNode is None:
+      return
+    self.setParameter("FiducialToFiducialInputFixedFiducials", self.ui.fiducialToFiducialInputFixedFiducialSelector)
+  
+  # Various functions to control button states and logic
   def onSelect(self):
     self.ui.fiducalToModelApplyButton.enabled = self.ui.fiducialToModelInputModelSelector.currentNode() and self.ui.fiducialToModelInputFiducialSelector.currentNode()
     
@@ -194,6 +191,9 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
     
     self.ui.showPointsTableButton.enabled = True
     self.ui.showErrorMetricTableButton.enabled = True
+    if self._parameterNode is not None:
+      self._parameterNode.SetParameter("EnableShowPointsFromSurfaceDistanceTableButton", "True")
+      self._parameterNode.SetParameter("EnableFiducialToModelErrorMetricButton", "True") 
     
   def onShowPointsFromSurfaceDistanceTableButton(self):
     logic = FiducialToModelDistanceLogic()
@@ -209,6 +209,9 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
     
     self.ui.fiducialToFiducialShowPointsButton.enabled = True
     self.ui.fiducialToFiducialShowErrorMetricTableButton.enabled = True
+    if self._parameterNode is not None:
+      self._parameterNode.SetParameter("EnableShowClosestPointToPointDistanceTableButton", "True")
+      self._parameterNode.SetParameter("EnableFiducialToFiducialDistanceTableButton", "True")
     
   def onShowClosestPointToPointDistanceTableButton(self):
     logic = FiducialToModelDistanceLogic()
@@ -227,6 +230,7 @@ class FiducialToModelDistanceLogic(ScriptedLoadableModuleLogic):
 
   def hasModelData(self,inputModel):
     
+    # Checks if model data is valid
     if not inputModel:
       logging.debug('hasModelData failed: no model node')
       return False
@@ -273,8 +277,6 @@ class FiducialToModelDistanceLogic(ScriptedLoadableModuleLogic):
     if not self.isValidInputData(inputModel, inputFiducials):
       slicer.util.errorDisplay('Invalid Inputs Defined - Check Error Log For Details')
       return False
-    
-    logging.info('Processing started')
 
     # Transform model polydata to world coordinate system
     if inputModel.GetParentTransformNode():
@@ -357,8 +359,6 @@ class FiducialToModelDistanceLogic(ScriptedLoadableModuleLogic):
     slicer.app.layoutManager().setLayout(slicer.vtkMRMLLayoutNode.SlicerLayoutFourUpTableView)
     slicer.app.applicationLogic().GetSelectionNode().SetReferenceActiveTableID(errorMetricTableNode.GetID())
     slicer.app.applicationLogic().PropagateTableSelection()
-
-    logging.info('Processing completed')
 
     return True
   
@@ -533,9 +533,6 @@ class FiducialToModelDistanceLogic(ScriptedLoadableModuleLogic):
     slicer.app.applicationLogic().PropagateTableSelection()
     
     return True
-        
-          
-  
 
 
 class FiducialToModelDistanceTest(ScriptedLoadableModuleTest):
@@ -614,9 +611,11 @@ class FiducialToModelDistanceTest(ScriptedLoadableModuleTest):
     self.delayDisplay('Fiducial to Fiducial Distance Test Passed!')
     
     
-    self.delayDisplay("Test passed!")
+    self.delayDisplay("All Tests Passed!")
     
-    logging.info("""Mean Distances should be 1.5mm
+    logging.info("""
+For Both Error Metric Tables:
+Mean Distances should be 1.5mm
 Root Mean Square should be 1.581mm
 Maximum Distance should be 2mm
 Minimum Distance should be 1mm
