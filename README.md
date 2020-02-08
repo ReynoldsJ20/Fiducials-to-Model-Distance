@@ -1,8 +1,9 @@
-# Fiducials-to-Model-Distance
-Fiducial to Model Distance module for 3d slicer
+# Fiducials to model distance
+
+This is an extension for 3D Slicer that computes distance between two point sets or a point set and a surface mesh.
 
 This module was developed to address research work at the Canterbury District Health Board, New Zealand. We would like to thank 
-Andras Lasso (Queens University) who made valuable contributions to the code and gave useful advice on developing a scripted module.
+Andras Lasso (Queen's University) who made valuable contributions to the code and gave useful advice on developing a scripted module.
 
 This module was primarily designed to compute distances from a low density point cloud of fiducial points to the surface of a model. 
 Error metrics such as mean distance, root mean square distance, maximum distance and minimum distance are computed and displayed in a table

@@ -41,7 +41,7 @@
          <bool>false</bool>
         </property>
         <property name="baseName">
-         <string>FiducialToModelDistance</string>
+         <string>FiducialsToModelDistance</string>
         </property>
         <property name="renameEnabled">
          <bool>true</bool>
