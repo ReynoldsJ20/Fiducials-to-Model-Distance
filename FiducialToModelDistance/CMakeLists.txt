@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-set(MODULE_NAME FiducialtoModelDistance)
+set(MODULE_NAME FiducialsToModelDistance)
 
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS

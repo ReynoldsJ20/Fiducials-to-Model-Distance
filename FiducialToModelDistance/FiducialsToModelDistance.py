@@ -7,29 +7,29 @@ from decimal import Decimal
 from slicer.util import VTKObservationMixin
 
 #
-# FiducialToModelDistance
+# FiducialsToModelDistance
 #
 
-class FiducialToModelDistance(ScriptedLoadableModule):
+class FiducialsToModelDistance(ScriptedLoadableModule):
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "Fiducial to Model Distance"
+    self.parent.title = "Fiducials to Model Distance"
     self.parent.categories = ["Quantification"]
     self.parent.dependencies = []
     self.parent.contributors = ["Jesse Reynolds (Canterbury District Health Board) with assistance from Andras Lasso (Queen's University), "] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
 This module computes the distances between a set of fiducial points and either the surface of a model, or another set of fiducial points. The results are displayed in two tables.
 """
-    self.parent.helpText += self.getDefaultModuleDocumentationLink()
+    self.parent.helpText += ' See <a href="https://github.com/ReynoldsJ20/SlicerFiducialsToModelDistance">documentation</a> for details.'
     self.parent.acknowledgementText = """
 This file was originally developed by Jesse Reynolds (Canterbury District Health Board) with assistance from Andras Lasso (Queen's University)."""
 
 #
-# FiducialToModelDistanceWidget
+# FiducialsToModelDistanceWidget
 #
 
-class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
+class FiducialsToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def __init__(self, parent=None):
     ScriptedLoadableModuleWidget.__init__(self, parent)
@@ -41,16 +41,16 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
     ScriptedLoadableModuleWidget.setup(self)
     
     # Create a new parameterNode
-    self.logic = FiducialToModelDistanceLogic()
+    self.logic = FiducialsToModelDistanceLogic()
         
     # Load rest of the widget from .ui file (created by Qt Designer)
-    uiWidget = slicer.util.loadUI(self.resourcePath('UI/FiducialToModelDistance.ui'))
+    uiWidget = slicer.util.loadUI(self.resourcePath('UI/FiducialsToModelDistance.ui'))
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
     uiWidget.setMRMLScene(slicer.mrmlScene)
     self.setParameterNode(self.logic.getParameterNode())
 
-    self.ui.parameterNodeSelector.addAttribute( "vtkMRMLScriptedModuleNode", "ModuleName", "FiducialToModelDistance" )
+    self.ui.parameterNodeSelector.addAttribute("vtkMRMLScriptedModuleNode", "ModuleName", self.moduleName)
         
     # Connections to update parameter node when GUI is changed
     self.ui.parameterNodeSelector.connect('currentNodeChanged(vtkMRMLNode*)', self.setParameterNode)
@@ -133,7 +133,7 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
     self._parameterNode.SetNodeReferenceID("OutputDistances", self.ui.outputDistancesTableNodeSelector.currentNodeID)
 
   def onApplyButton(self):
-    logic = FiducialToModelDistanceLogic()
+    logic = FiducialsToModelDistanceLogic()
     try:
       logic.compute(self._parameterNode.GetNodeReference("InputPoints"), self._parameterNode.GetNodeReference("InputReference"),
         self._parameterNode.GetNodeReference("OutputMetrics"), self._parameterNode.GetNodeReference("OutputDistances"))
@@ -151,17 +151,17 @@ class FiducialToModelDistanceWidget(ScriptedLoadableModuleWidget, VTKObservation
     slicer.app.applicationLogic().PropagateTableSelection() 
 
   def onShowMetricsTableButton(self):
-    FiducialToModelDistanceWidget.showTable(self._parameterNode.GetNodeReferenceID("OutputMetrics"))
+    FiducialsToModelDistanceWidget.showTable(self._parameterNode.GetNodeReferenceID("OutputMetrics"))
     
   def onShowDistancesTableButton(self):
-    FiducialToModelDistanceWidget.showTable(self._parameterNode.GetNodeReferenceID("OutputDistances"))
+    FiducialsToModelDistanceWidget.showTable(self._parameterNode.GetNodeReferenceID("OutputDistances"))
 
 
 #
-# FiducialToModelDistanceLogic
+# FiducialsToModelDistanceLogic
 #
 
-class FiducialToModelDistanceLogic(ScriptedLoadableModuleLogic):
+class FiducialsToModelDistanceLogic(ScriptedLoadableModuleLogic):
 
   def pointDistancesLabelsFromPoints(self, inputPoints, referencePoints):
     """Calculate closest point to point distance"""
@@ -279,7 +279,7 @@ class FiducialToModelDistanceLogic(ScriptedLoadableModuleLogic):
       slicer.util.updateTableFromArray(outputMetricsTable, [np.array(v) for v in metricValues], metricLabels)
   
 
-class FiducialToModelDistanceTest(ScriptedLoadableModuleTest):
+class FiducialsToModelDistanceTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -295,9 +295,9 @@ class FiducialToModelDistanceTest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_FiducialToModelDistance1()
+    self.test_FiducialsToModelDistance1()
 
-  def test_FiducialToModelDistance1(self):
+  def test_FiducialsToModelDistance1(self):
 
     self.delayDisplay("Starting the test")
     
@@ -333,7 +333,7 @@ class FiducialToModelDistanceTest(ScriptedLoadableModuleTest):
     threeDView = threeDWidget.threeDView()
     threeDView.resetFocalPoint()
 
-    logic = FiducialToModelDistanceLogic()
+    logic = FiducialsToModelDistanceLogic()
     metricsTable = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Metrics")
     distancesTable = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode", "Distances")
 
