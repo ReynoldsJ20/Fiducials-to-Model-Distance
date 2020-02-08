@@ -19,7 +19,7 @@ class FiducialToModelDistance(ScriptedLoadableModule):
     self.parent.dependencies = []
     self.parent.contributors = ["Jesse Reynolds (Canterbury District Health Board) with assistance from Andras Lasso (Queen's University), "] # replace with "Firstname Lastname (Organization)"
     self.parent.helpText = """
-This module computes the distances between a set of fiducial points and a surface model. The results are displayed in a table.
+This module computes the distances between a set of fiducial points and either the surface of a model, or another set of fiducial points. The results are displayed in a table.
 """
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
     self.parent.acknowledgementText = """
