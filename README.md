@@ -7,8 +7,8 @@ Andras Lasso (Queens University) who made valuable contributions to the code and
 This module was primarily designed to compute distances from a low density point cloud of fiducial points to the surface of a model. 
 Error metrics such as mean distance, root mean square distance, maximum distance and minimum distance are computed and displayed in a table
 
-![Screenshot1](/Resources/Screenshots/ScreenShot 1.PNG)
+![Screenshot 1](/Resources/Screenshots/ScreenShot 1.PNG)
 
 This module has also been extended to compute distances between two sets of point coulds made from fiducials. This could be used to compute error metrics after a Fiducial to Fiducial registration among other possible uses.
 
-![Screenshot2](/Resources/Screenshots/ScreenShot 2.PNG)
+![Screenshot 2](/Resources/Screenshots/ScreenShot 2.PNG)
